@@ -1,0 +1,108 @@
+Looking for a reduced-changes implementation.
+
+Can factor differing behaviour into AdvantageContainerType,
+but adding a new field and accompanying type hierarchy is a bit much,
+and enums are inappropriate for storing extra data in.
+
+Wilkes asked if it could be instead handled by modifiers.
+
+To use the same kind of approach as currently and just move the data around
+would require:
+
+1.  Either changing getAllModifiers to not include new modifiers from the parent
+    or changing getAdjustedPoints(...) to ignore the new modifiers.
+
+    Probably neater to not include them to avoid confusion.
+    Probably have to find other call sites of getAllModifiers
+    to find places which call it on the parent to get inheritable modifiers.
+
+2.  Extend the ModifierEditor to have a back-reference to the Advantage:
+
+    1.  Add advantage field to ModifierEditor or make Modifier's accessible.
+
+    2.  Change Modifier to add a back-reference to the Advantage it is a modifier to,
+        and pass this through in .createEditor().
+
+    3.  Modify ModifierListEditor to retain the back-reference
+        to the Advantage rather than discarding it immediately in its constructor,
+        and pass it through in via .addModifier().
+
+3.  Add a new CostType for subtracting cost of named advantage.
+
+    1.  Add a Base advantage name field to Modifier.
+        Would prefer if this were a 
+
+Data model wise this could be a modifier that 
+
+---
+
+Minimum missing for viable:
+
+1.  Deduct cost of named advantage,
+    so if native template is modified alternate forms are recalculated.
+
+    Needs to be able to calculate the cost as if the referenced Advantage.
+
+2.  Automagically apply modifiers to Top/bottom N most expensive.
+
+    Can be used to implement Alternate Forms and Alternative Abilities
+    by applying × modifiers to members that are not in the top N most expensive.
+
+    Can have 10% discount on sole most expensive form with a modifier applied
+    to top N most expensive, though ×0 modifier to not in top N most expensive
+    and not usually applicable to alternate forms.
+
+    Applying this would be a bit awkward,
+    since you need to either not allow it to be inherited by children
+    and apply the modifier during the Advantage Container's calculation,
+    or when finding which modifiers apply
+    make the calculation on a copy of the tree with that modifier omitted.
+
+Handling known cases:
+
+1.  Single Alternate Form
+
+    Add 15 point Shapeshifting advantage alongside Alternate Form's Group.
+    Apply "- Cost of Advantage" and "-10%" modifiers to Alternate Form's Group.
+
+2.  Single Alternate Form with "Once On, Stays On"
+
+    Add 15 point Shapeshifting advantage alongside Alternate Form's Group.
+    Apply +50% modifier to Shapeshifting Advantage.
+    Apply "- Cost of Advantage" modifier to Alternate Form's Group.
+
+3.  Multiple Alternate Forms
+
+    Add 15 point Shapeshifting advantage per Alternate Form
+    alongside Alternate Forms' Groups.
+    Put Alternate Forms in a Group.
+    Apply "- Cost of Advantage" modifier to Alternate Forms' Group.
+    Apply "×0 to advantages that are not the top 1 most expensive"
+
+4.  Morph memorised forms
+
+    Add 100 point Shapeshifting advantage alongside Alternate Forms' Groups.
+    Put Memorised forms in a group.
+    Apply "- Cost of Advantage" modifier to Alternate Forms' Group.
+    Apply "×0 to advantages that are not the top 1 most expensive"
+
+5.  Alternative Abilities
+
+    Put Alternative Abilities in a group.
+    Apply "×0.2 to advantages that are not the top N most expensive".
+
+Implementation:
+
+# Add Scope to modifiers
+
+1.  Descendant Advantages (default for Advantage Containers).
+2.  This Advantage (default for Advantages).
+3.  To children not in the N most expensive.
+
+# - Cost of Advantage
+
+Needs to be a non-inherited Modifier, since otherwise it will subtract its cost from every descendant advantage, when we want it to apply to the cost of the group itself.
+
+The -10% for single alternate form also needs this to avoid rounding errors.
+
+1.  Make Advantage Containers 
